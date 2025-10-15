@@ -67,8 +67,13 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   if (tabAudioState.has(tabId)) {
     const state = tabAudioState.get(tabId);
+    console.log(`[Audio Monitor] Tab ${tabId}: Tab closed, cleaning up timers`);
     if (state.timeoutId) {
       clearTimeout(state.timeoutId);
+    }
+    if (state.retryIntervalId) {
+      console.log(`[Audio Monitor] Tab ${tabId}: Clearing retry interval`);
+      clearInterval(state.retryIntervalId);
     }
     tabAudioState.delete(tabId);
   }
@@ -116,18 +121,26 @@ function handleAudioChange(tabId, isAudible, tab) {
       // Audio stopped
       state.isAudible = false;
       console.log(`[Audio Monitor] Tab ${tabId}: Audio stopped, waiting ${config.timespan}ms`);
+      console.log(`[Audio Monitor] Tab ${tabId}: Config - Retry Interval: ${config.retryInterval}ms`);
       
       // Set timeout to click button after configured timespan
       state.timeoutId = setTimeout(() => {
-        clickButtonInTab(tabId, config.buttonSelector);
+        console.log(`[Audio Monitor] Tab ${tabId}: Initial timeout fired, clicking button`);
+        clickButtonInTab(tabId, config.buttonSelector, config);
       }, config.timespan);
     }
   });
 }
 
 // Click button in the specified tab
-async function clickButtonInTab(tabId, buttonSelector) {
+async function clickButtonInTab(tabId, buttonSelector, config = null) {
   try {
+    // Get config if not provided
+    if (!config) {
+      const data = await chrome.storage.sync.get('config');
+      config = data.config || DEFAULT_CONFIG;
+    }
+    
     // Check if tab still exists
     const tab = await chrome.tabs.get(tabId).catch(() => null);
     if (!tab) {
@@ -135,6 +148,9 @@ async function clickButtonInTab(tabId, buttonSelector) {
       tabAudioState.delete(tabId);
       return;
     }
+    
+    console.log(`[Audio Monitor] Tab ${tabId}: Attempting to click button "${buttonSelector}"`);
+    console.log(`[Audio Monitor] Tab ${tabId}: Current audio state - audible: ${tab.audible}`);
 
     // Execute content script to click the button with retry logic (all frames)
     const results = await chrome.scripting.executeScript({
@@ -257,6 +273,42 @@ async function clickButtonInTab(tabId, buttonSelector) {
         }).catch(() => {
           // Content script might not be ready, ignore error
         });
+        
+        // Set up retry interval if configured
+        const state = tabAudioState.get(tabId);
+        if (config.retryInterval > 0 && state) {
+          console.log(`[Audio Monitor] Tab ${tabId}: 🔄 Setting up retry interval - will retry every ${config.retryInterval}ms if no audio`);
+          
+          // Clear any existing retry interval
+          if (state.retryIntervalId) {
+            clearInterval(state.retryIntervalId);
+          }
+          
+          state.retryIntervalId = setInterval(async () => {
+            console.log(`[Audio Monitor] Tab ${tabId}: ⏰ Retry interval fired, checking audio status...`);
+            
+            // Check if audio is still not playing before retrying
+            const currentTab = await chrome.tabs.get(tabId).catch(() => null);
+            if (!currentTab) {
+              console.log(`[Audio Monitor] Tab ${tabId}: Tab no longer exists, clearing retry interval`);
+              clearInterval(state.retryIntervalId);
+              state.retryIntervalId = null;
+              tabAudioState.delete(tabId);
+              return;
+            }
+            
+            console.log(`[Audio Monitor] Tab ${tabId}: Current audio state - audible: ${currentTab.audible}`);
+            
+            if (!currentTab.audible) {
+              console.log(`[Audio Monitor] Tab ${tabId}: 🔁 No audio detected, retrying button click...`);
+              await clickButtonInTab(tabId, buttonSelector, config);
+            } else {
+              console.log(`[Audio Monitor] Tab ${tabId}: ✓ Audio detected, stopping retry interval`);
+              clearInterval(state.retryIntervalId);
+              state.retryIntervalId = null;
+            }
+          }, config.retryInterval);
+        }
       } else {
         console.warn(`[Audio Monitor] Tab ${tabId}: ✗ Button not found in any frame (checked ${results.length} frames) for selector "${buttonSelector}"`);
       }
