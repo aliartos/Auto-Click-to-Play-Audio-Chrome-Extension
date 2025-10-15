@@ -96,35 +96,17 @@ async function clickButtonInTab(tabId, buttonSelector) {
     const results = await chrome.scripting.executeScript({
       target: { tabId: tabId, allFrames: true },
       func: (selector) => {
-        // Function to wait for element with retries
+        // Function to wait for element with retries (only in current frame)
         function waitForElement(selector, maxAttempts = 10, interval = 500) {
           return new Promise((resolve, reject) => {
             let attempts = 0;
             
             const check = () => {
-              // Try main document
+              // Only search in current frame's document
               let button = document.querySelector(selector);
               if (button) {
-                resolve({ button, location: 'main' });
+                resolve(button);
                 return;
-              }
-              
-              // Try iframes
-              const iframes = document.querySelectorAll('iframe');
-              for (let i = 0; i < iframes.length; i++) {
-                try {
-                  const iframe = iframes[i];
-                  const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-                  if (iframeDoc) {
-                    const buttonInIframe = iframeDoc.querySelector(selector);
-                    if (buttonInIframe) {
-                      resolve({ button: buttonInIframe, location: `iframe ${i}` });
-                      return;
-                    }
-                  }
-                } catch (e) {
-                  // Cross-origin iframe, can't access
-                }
               }
               
               attempts++;
@@ -174,8 +156,10 @@ async function clickButtonInTab(tabId, buttonSelector) {
         
         // Try to find and click the button
         return waitForElement(selector)
-          .then(({ button, location }) => {
+          .then((button) => {
             simulateUserClick(button);
+            
+            const location = window === window.top ? 'main page' : 'iframe';
             
             // Log to page console for confirmation
             console.log('[Audio Monitor Extension] Button clicked:', {
@@ -209,14 +193,18 @@ async function clickButtonInTab(tabId, buttonSelector) {
     });
 
     if (results && results.length > 0) {
-      // Check all frames for success
-      const successResult = results.find(r => r.result && r.result.success);
+      // Check all frames for success (but only take the first success to avoid double-clicking)
+      const successResults = results.filter(r => r.result && r.result.success);
       
-      if (successResult) {
-        const result = successResult.result;
+      if (successResults.length > 0) {
+        const result = successResults[0].result;
         console.log(`[Audio Monitor] Tab ${tabId}: ✓ Successfully clicked button in ${result.location} with selector "${buttonSelector}"`, result.buttonInfo);
         
-        // Send notification to content script for visual confirmation
+        if (successResults.length > 1) {
+          console.warn(`[Audio Monitor] Tab ${tabId}: Warning - Button found in ${successResults.length} frames, clicked only once`);
+        }
+        
+        // Send notification to content script for visual confirmation (only to main frame)
         chrome.tabs.sendMessage(tabId, {
           action: 'buttonClicked',
           selector: buttonSelector,
@@ -226,8 +214,7 @@ async function clickButtonInTab(tabId, buttonSelector) {
           // Content script might not be ready, ignore error
         });
       } else {
-        const result = results[0].result;
-        console.warn(`[Audio Monitor] Tab ${tabId}: ✗ ${result.error} for selector "${buttonSelector}"`);
+        console.warn(`[Audio Monitor] Tab ${tabId}: ✗ Button not found in any frame (checked ${results.length} frames) for selector "${buttonSelector}"`);
       }
     }
   } catch (error) {

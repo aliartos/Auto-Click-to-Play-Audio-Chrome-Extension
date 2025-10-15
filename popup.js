@@ -54,6 +54,27 @@ saveBtn.addEventListener('click', () => {
   });
 });
 
+// Validate CSS selector
+function isValidSelector(selector) {
+  try {
+    document.createDocumentFragment().querySelector(selector);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Show status message
+function showStatus(message, type = 'info') {
+  statusDiv.textContent = message;
+  statusDiv.className = `status-message ${type}`;
+  statusDiv.style.display = 'block';
+  
+  setTimeout(() => {
+    statusDiv.style.display = 'none';
+  }, 5000);
+}
+
 // Test button click
 testBtn.addEventListener('click', async () => {
   const buttonSelector = buttonSelectorInput.value.trim();
@@ -97,7 +118,7 @@ testBtn.addEventListener('click', async () => {
           element.click();
         }
         
-        // Try immediate query first in current context
+        // Only search in current frame's document (since allFrames runs this in each frame)
         let button = document.querySelector(selector);
         if (button) {
           simulateUserClick(button);
@@ -106,66 +127,16 @@ testBtn.addEventListener('click', async () => {
             selector: selector,
             buttonText: button.textContent?.trim() || button.value || button.getAttribute('aria-label') || 'No text',
             classes: button.className,
-            location: 'main page',
+            location: window === window.top ? 'main page' : 'iframe',
             immediate: true
           };
         }
         
-        // Try to find in iframes
-        const iframes = document.querySelectorAll('iframe');
-        for (let i = 0; i < iframes.length; i++) {
-          try {
-            const iframe = iframes[i];
-            const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-            if (iframeDoc) {
-              const buttonInIframe = iframeDoc.querySelector(selector);
-              if (buttonInIframe) {
-                simulateUserClick(buttonInIframe);
-                return {
-                  success: true,
-                  selector: selector,
-                  buttonText: buttonInIframe.textContent?.trim() || buttonInIframe.value || buttonInIframe.getAttribute('aria-label') || 'No text',
-                  classes: buttonInIframe.className,
-                  location: `iframe ${i + 1}`,
-                  immediate: true
-                };
-              }
-            }
-          } catch (e) {
-            // Cross-origin iframe, can't access
-          }
-        }
-        
-        // If not found, return detailed debug info
-        const allElements = document.querySelectorAll('*');
-        const similarClasses = [];
-        const selectorParts = selector.match(/\.[\w-]+/g) || [];
-        
-        allElements.forEach(el => {
-          if (el.className && typeof el.className === 'string') {
-            const classes = el.className.split(' ');
-            classes.forEach(cls => {
-              selectorParts.forEach(part => {
-                const className = part.substring(1); // Remove the dot
-                if (cls.includes(className) || className.includes(cls)) {
-                  similarClasses.push(cls);
-                }
-              });
-            });
-          }
-        });
-        
+        // Not found in this frame
         return { 
           success: false, 
           selector: selector, 
-          error: 'Button not found in main page or iframes',
-          debug: {
-            totalElements: allElements.length,
-            iframeCount: document.querySelectorAll('iframe').length,
-            similarClasses: [...new Set(similarClasses)].slice(0, 10),
-            readyState: document.readyState,
-            selectorParsed: selectorParts
-          }
+          error: 'Button not found in this frame'
         };
       },
       args: [buttonSelector]
@@ -173,51 +144,22 @@ testBtn.addEventListener('click', async () => {
 
     if (results && results.length > 0) {
       // Check all frames for success
-      const successResult = results.find(r => r.result && r.result.success);
+      const successResults = results.filter(r => r.result && r.result.success);
       
-      if (successResult) {
-        const result = successResult.result;
+      if (successResults.length > 0) {
+        const result = successResults[0].result;
         showStatus(`✓ Button clicked successfully in ${result.location}! - "${result.buttonText}"`, 'success');
       } else {
         const result = results[0].result;
-        let errorMsg = `✗ ${result.error}: "${result.selector}"`;
-        if (result.debug) {
-          if (result.debug.iframeCount > 0) {
-            errorMsg += ` | Found ${result.debug.iframeCount} iframe(s)`;
-          }
-          if (result.debug.similarClasses.length > 0) {
-            errorMsg += ` | Similar: ${result.debug.similarClasses.slice(0, 3).join(', ')}`;
-          }
-        }
+        let errorMsg = `✗ Button not found in any frame`;
         showStatus(errorMsg, 'error');
-        console.log('Full debug info:', result.debug);
+        console.log('Checked frames:', results.length);
       }
     }
   } catch (error) {
     showStatus(`Error: ${error.message}`, 'error');
   }
 });
-
-// Validate CSS selector
-function isValidSelector(selector) {
-  try {
-    document.createDocumentFragment().querySelector(selector);
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-
-// Show status message
-function showStatus(message, type = 'info') {
-  statusDiv.textContent = message;
-  statusDiv.className = `status-message ${type}`;
-  statusDiv.style.display = 'block';
-  
-  setTimeout(() => {
-    statusDiv.style.display = 'none';
-  }, 5000);
-}
 
 // Update audio status display
 async function updateAudioStatus() {
