@@ -30,6 +30,31 @@ chrome.storage.sync.get('config', (data) => {
   updateAudioStatus();
 });
 
+// Enable/Disable toggle - immediate effect without saving
+enabledCheckbox.addEventListener('change', async () => {
+  chrome.storage.sync.get('config', async (data) => {
+    const config = data.config || DEFAULT_CONFIG;
+    config.enabled = enabledCheckbox.checked;
+    
+    chrome.storage.sync.set({ config }, async () => {
+      const statusMsg = config.enabled ? 
+        '✓ Extension enabled' : 
+        '✗ Extension disabled';
+      showStatus(statusMsg, config.enabled ? 'success' : 'info');
+      updateAudioStatus();
+      
+      // If enabling, check current tab's audio state
+      if (config.enabled) {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab) {
+          // Notify background to check audio state for all tabs
+          chrome.runtime.sendMessage({ action: 'recheckAudio' });
+        }
+      }
+    });
+  });
+});
+
 // Save settings
 saveBtn.addEventListener('click', () => {
   const config = {

@@ -43,7 +43,7 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
     const newConfig = changes.config.newValue;
     updateBadge(newConfig);
     
-    // Clear all pending timeouts if extension is disabled
+        // Clear all pending timeouts if extension is disabled
     if (!newConfig.enabled) {
       console.log('[Audio Monitor] Extension disabled, clearing all timers');
       tabAudioState.forEach((state, tabId) => {
@@ -51,6 +51,21 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
           clearTimeout(state.timeoutId);
           state.timeoutId = null;
         }
+        if (state.retryIntervalId) {
+          clearInterval(state.retryIntervalId);
+          state.retryIntervalId = null;
+        }
+      });
+    } else {
+      // Extension was just enabled, check current audio state of all tabs
+      console.log('[Audio Monitor] Extension enabled, checking audio state of all tabs');
+      chrome.tabs.query({}, (tabs) => {
+        tabs.forEach(tab => {
+          if (tab.audible !== undefined) {
+            console.log(`[Audio Monitor] Tab ${tab.id}: Checking audio state - audible: ${tab.audible}`);
+            handleAudioChange(tab.id, tab.audible, tab);
+          }
+        });
       });
     }
   }
@@ -327,6 +342,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       lastAudioTime: data.lastAudioTime
     }));
     sendResponse({ state });
+  } else if (request.action === 'recheckAudio') {
+    console.log('[Audio Monitor] Recheck audio requested from popup');
+    chrome.tabs.query({}, (tabs) => {
+      tabs.forEach(tab => {
+        if (tab.audible !== undefined) {
+          console.log(`[Audio Monitor] Tab ${tab.id}: Checking audio state - audible: ${tab.audible}`);
+          handleAudioChange(tab.id, tab.audible, tab);
+        }
+      });
+    });
+    sendResponse({ success: true });
   }
   return true;
 });
