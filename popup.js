@@ -71,29 +71,126 @@ testBtn.addEventListener('click', async () => {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     
+    showStatus('Searching for button...', 'info');
+    
     const results = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
+      target: { tabId: tab.id, allFrames: true },
       func: (selector) => {
-        const button = document.querySelector(selector);
+        // Function to simulate realistic user click
+        function simulateUserClick(element) {
+          const rect = element.getBoundingClientRect();
+          const x = rect.left + rect.width / 2;
+          const y = rect.top + rect.height / 2;
+          
+          // Dispatch multiple events as a real user would
+          const events = [
+            new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }),
+            new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }),
+            new MouseEvent('click', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }),
+            new PointerEvent('pointerdown', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }),
+            new PointerEvent('pointerup', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y })
+          ];
+          
+          events.forEach(event => element.dispatchEvent(event));
+          
+          // Also call native click as fallback
+          element.click();
+        }
+        
+        // Try immediate query first in current context
+        let button = document.querySelector(selector);
         if (button) {
-          button.click();
+          simulateUserClick(button);
           return { 
             success: true, 
             selector: selector,
-            buttonText: button.textContent?.trim() || button.value || 'No text'
+            buttonText: button.textContent?.trim() || button.value || button.getAttribute('aria-label') || 'No text',
+            classes: button.className,
+            location: 'main page',
+            immediate: true
           };
         }
-        return { success: false, selector: selector, error: 'Button not found' };
+        
+        // Try to find in iframes
+        const iframes = document.querySelectorAll('iframe');
+        for (let i = 0; i < iframes.length; i++) {
+          try {
+            const iframe = iframes[i];
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+            if (iframeDoc) {
+              const buttonInIframe = iframeDoc.querySelector(selector);
+              if (buttonInIframe) {
+                simulateUserClick(buttonInIframe);
+                return {
+                  success: true,
+                  selector: selector,
+                  buttonText: buttonInIframe.textContent?.trim() || buttonInIframe.value || buttonInIframe.getAttribute('aria-label') || 'No text',
+                  classes: buttonInIframe.className,
+                  location: `iframe ${i + 1}`,
+                  immediate: true
+                };
+              }
+            }
+          } catch (e) {
+            // Cross-origin iframe, can't access
+          }
+        }
+        
+        // If not found, return detailed debug info
+        const allElements = document.querySelectorAll('*');
+        const similarClasses = [];
+        const selectorParts = selector.match(/\.[\w-]+/g) || [];
+        
+        allElements.forEach(el => {
+          if (el.className && typeof el.className === 'string') {
+            const classes = el.className.split(' ');
+            classes.forEach(cls => {
+              selectorParts.forEach(part => {
+                const className = part.substring(1); // Remove the dot
+                if (cls.includes(className) || className.includes(cls)) {
+                  similarClasses.push(cls);
+                }
+              });
+            });
+          }
+        });
+        
+        return { 
+          success: false, 
+          selector: selector, 
+          error: 'Button not found in main page or iframes',
+          debug: {
+            totalElements: allElements.length,
+            iframeCount: document.querySelectorAll('iframe').length,
+            similarClasses: [...new Set(similarClasses)].slice(0, 10),
+            readyState: document.readyState,
+            selectorParsed: selectorParts
+          }
+        };
       },
       args: [buttonSelector]
     });
 
-    if (results && results[0]) {
-      const result = results[0].result;
-      if (result.success) {
-        showStatus(`✓ Button clicked successfully! (Text: "${result.buttonText}")`, 'success');
+    if (results && results.length > 0) {
+      // Check all frames for success
+      const successResult = results.find(r => r.result && r.result.success);
+      
+      if (successResult) {
+        const result = successResult.result;
+        showStatus(`✓ Button clicked successfully in ${result.location}! - "${result.buttonText}"`, 'success');
       } else {
-        showStatus(`✗ ${result.error}: "${result.selector}"`, 'error');
+        const result = results[0].result;
+        let errorMsg = `✗ ${result.error}: "${result.selector}"`;
+        if (result.debug) {
+          if (result.debug.iframeCount > 0) {
+            errorMsg += ` | Found ${result.debug.iframeCount} iframe(s)`;
+          }
+          if (result.debug.similarClasses.length > 0) {
+            errorMsg += ` | Similar: ${result.debug.similarClasses.slice(0, 3).join(', ')}`;
+          }
+        }
+        showStatus(errorMsg, 'error');
+        console.log('Full debug info:', result.debug);
       }
     }
   } catch (error) {

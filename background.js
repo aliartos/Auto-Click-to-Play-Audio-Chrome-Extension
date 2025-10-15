@@ -92,26 +92,142 @@ async function clickButtonInTab(tabId, buttonSelector) {
       return;
     }
 
-    // Execute content script to click the button
+    // Execute content script to click the button with retry logic (all frames)
     const results = await chrome.scripting.executeScript({
-      target: { tabId: tabId },
+      target: { tabId: tabId, allFrames: true },
       func: (selector) => {
-        const button = document.querySelector(selector);
-        if (button) {
-          button.click();
-          return { success: true, selector: selector };
+        // Function to wait for element with retries
+        function waitForElement(selector, maxAttempts = 10, interval = 500) {
+          return new Promise((resolve, reject) => {
+            let attempts = 0;
+            
+            const check = () => {
+              // Try main document
+              let button = document.querySelector(selector);
+              if (button) {
+                resolve({ button, location: 'main' });
+                return;
+              }
+              
+              // Try iframes
+              const iframes = document.querySelectorAll('iframe');
+              for (let i = 0; i < iframes.length; i++) {
+                try {
+                  const iframe = iframes[i];
+                  const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+                  if (iframeDoc) {
+                    const buttonInIframe = iframeDoc.querySelector(selector);
+                    if (buttonInIframe) {
+                      resolve({ button: buttonInIframe, location: `iframe ${i}` });
+                      return;
+                    }
+                  }
+                } catch (e) {
+                  // Cross-origin iframe, can't access
+                }
+              }
+              
+              attempts++;
+              if (attempts >= maxAttempts) {
+                reject(new Error('Button not found after retries'));
+                return;
+              }
+              
+              setTimeout(check, interval);
+            };
+            
+            check();
+          });
         }
-        return { success: false, selector: selector, error: 'Button not found' };
+        
+        // Function to simulate realistic user click
+        function simulateUserClick(element) {
+          const rect = element.getBoundingClientRect();
+          const x = rect.left + rect.width / 2;
+          const y = rect.top + rect.height / 2;
+          
+          // Scroll element into view if needed
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Dispatch multiple events as a real user would
+          const events = [
+            new MouseEvent('mouseover', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }),
+            new MouseEvent('mouseenter', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }),
+            new MouseEvent('mousemove', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }),
+            new PointerEvent('pointerdown', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }),
+            new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }),
+            new PointerEvent('pointerup', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }),
+            new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }),
+            new MouseEvent('click', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y })
+          ];
+          
+          events.forEach(event => element.dispatchEvent(event));
+          
+          // Also call native click as fallback
+          element.click();
+          
+          // Try focus if it's a focusable element
+          if (typeof element.focus === 'function') {
+            element.focus();
+          }
+        }
+        
+        // Try to find and click the button
+        return waitForElement(selector)
+          .then(({ button, location }) => {
+            simulateUserClick(button);
+            
+            // Log to page console for confirmation
+            console.log('[Audio Monitor Extension] Button clicked:', {
+              selector: selector,
+              location: location,
+              timestamp: new Date().toISOString(),
+              buttonText: button.textContent?.trim() || button.getAttribute('aria-label') || 'N/A'
+            });
+            
+            return { 
+              success: true, 
+              selector: selector,
+              location: location,
+              buttonInfo: {
+                tag: button.tagName,
+                classes: button.className,
+                ariaLabel: button.getAttribute('aria-label'),
+                timestamp: new Date().toISOString()
+              }
+            };
+          })
+          .catch(error => {
+            return { 
+              success: false, 
+              selector: selector, 
+              error: error.message || 'Button not found'
+            };
+          });
       },
       args: [buttonSelector]
     });
 
-    if (results && results[0]) {
-      const result = results[0].result;
-      if (result.success) {
-        console.log(`[Audio Monitor] Tab ${tabId}: Successfully clicked button with selector "${buttonSelector}"`);
+    if (results && results.length > 0) {
+      // Check all frames for success
+      const successResult = results.find(r => r.result && r.result.success);
+      
+      if (successResult) {
+        const result = successResult.result;
+        console.log(`[Audio Monitor] Tab ${tabId}: ✓ Successfully clicked button in ${result.location} with selector "${buttonSelector}"`, result.buttonInfo);
+        
+        // Send notification to content script for visual confirmation
+        chrome.tabs.sendMessage(tabId, {
+          action: 'buttonClicked',
+          selector: buttonSelector,
+          location: result.location,
+          timestamp: result.buttonInfo.timestamp
+        }).catch(() => {
+          // Content script might not be ready, ignore error
+        });
       } else {
-        console.warn(`[Audio Monitor] Tab ${tabId}: ${result.error} for selector "${buttonSelector}"`);
+        const result = results[0].result;
+        console.warn(`[Audio Monitor] Tab ${tabId}: ✗ ${result.error} for selector "${buttonSelector}"`);
       }
     }
   } catch (error) {
