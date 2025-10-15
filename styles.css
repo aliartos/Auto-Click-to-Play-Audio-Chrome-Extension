@@ -57,24 +57,28 @@ h3 {
 
 /* Toggle switch */
 .toggle-container {
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  padding: 10px;
-  background: #f9f9f9;
+  padding: 12px 15px;
+  background: #ffffff;
+  border: 2px solid #e0e0e0;
   border-radius: 8px;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  min-height: 52px;
 }
 
 .toggle-container:hover {
-  background: #f0f0f0;
+  background: #f9f9f9;
+  border-color: #4CAF50;
 }
 
 .label-text {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
   color: #333;
+  flex: 1;
 }
 
 .toggle-container input[type="checkbox"] {
@@ -82,28 +86,36 @@ h3 {
 }
 
 .toggle-slider {
+  display: inline-flex;
+  align-items: center;
   position: relative;
-  width: 50px;
-  height: 26px;
-  background: #ccc;
-  border-radius: 13px;
+  width: 52px;
+  height: 28px;
+  background: #d32f2f;
+  border-radius: 14px;
   transition: background 0.3s;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
 }
 
 .toggle-slider::after {
   content: '';
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 20px;
-  height: 20px;
+  top: 2px;
+  left: 2px;
+  width: 24px;
+  height: 24px;
   background: white;
   border-radius: 50%;
   transition: transform 0.3s;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  border: 1px solid #e0e0e0;
 }
 
 .toggle-container input[type="checkbox"]:checked + .toggle-slider {
   background: #4CAF50;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 .toggle-container input[type="checkbox"]:checked + .toggle-slider::after {

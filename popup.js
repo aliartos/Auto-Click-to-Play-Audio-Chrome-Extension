@@ -49,7 +49,10 @@ saveBtn.addEventListener('click', () => {
   }
 
   chrome.storage.sync.set({ config }, () => {
-    showStatus('Settings saved successfully!', 'success');
+    const statusMsg = config.enabled ? 
+      'Settings saved! Extension is now active.' : 
+      'Settings saved! Extension is now disabled.';
+    showStatus(statusMsg, 'success');
     updateAudioStatus();
   });
 });

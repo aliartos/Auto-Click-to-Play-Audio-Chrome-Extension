@@ -10,13 +10,49 @@ const DEFAULT_CONFIG = {
 // Store audio state for each tab
 const tabAudioState = new Map();
 
+// Update extension badge based on config
+function updateBadge(config) {
+  if (config.enabled && config.buttonSelector) {
+    chrome.action.setBadgeText({ text: 'ON' });
+    chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' });
+  } else if (config.buttonSelector) {
+    chrome.action.setBadgeText({ text: 'OFF' });
+    chrome.action.setBadgeBackgroundColor({ color: '#999' });
+  } else {
+    chrome.action.setBadgeText({ text: '!' });
+    chrome.action.setBadgeBackgroundColor({ color: '#FF9800' });
+  }
+}
+
 // Initialize configuration
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.sync.get('config', (data) => {
     if (!data.config) {
       chrome.storage.sync.set({ config: DEFAULT_CONFIG });
+      updateBadge(DEFAULT_CONFIG);
+    } else {
+      updateBadge(data.config);
     }
   });
+});
+
+// Listen for config changes
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'sync' && changes.config) {
+    const newConfig = changes.config.newValue;
+    updateBadge(newConfig);
+    
+    // Clear all pending timeouts if extension is disabled
+    if (!newConfig.enabled) {
+      console.log('[Audio Monitor] Extension disabled, clearing all timers');
+      tabAudioState.forEach((state, tabId) => {
+        if (state.timeoutId) {
+          clearTimeout(state.timeoutId);
+          state.timeoutId = null;
+        }
+      });
+    }
+  }
 });
 
 // Monitor tab audio state changes
@@ -42,10 +78,6 @@ function handleAudioChange(tabId, isAudible, tab) {
   chrome.storage.sync.get('config', (data) => {
     const config = data.config || DEFAULT_CONFIG;
     
-    if (!config.enabled || !config.buttonSelector) {
-      return;
-    }
-
     // Get or create tab state
     let state = tabAudioState.get(tabId);
     if (!state) {
@@ -57,10 +89,16 @@ function handleAudioChange(tabId, isAudible, tab) {
       tabAudioState.set(tabId, state);
     }
 
-    // Clear existing timeout
+    // Always clear existing timeout
     if (state.timeoutId) {
       clearTimeout(state.timeoutId);
       state.timeoutId = null;
+    }
+    
+    // If disabled or no selector, stop here
+    if (!config.enabled || !config.buttonSelector) {
+      console.log(`[Audio Monitor] Tab ${tabId}: Extension disabled or no selector configured`);
+      return;
     }
 
     if (isAudible) {
