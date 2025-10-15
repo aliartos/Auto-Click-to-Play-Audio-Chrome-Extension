@@ -2,8 +2,9 @@
 
 const DEFAULT_CONFIG = {
   enabled: true,
-  timespan: 3000, // 3 seconds in milliseconds
+  timespan: 1000, // 1 seconds in milliseconds
   buttonSelector: '', // CSS selector for the button (class or id)
+  retryInterval: 10000, // Retry interval in milliseconds (0 = disabled)
   monitorAllTabs: true
 };
 
@@ -84,15 +85,20 @@ function handleAudioChange(tabId, isAudible, tab) {
       state = {
         isAudible: false,
         timeoutId: null,
+        retryIntervalId: null,
         lastAudioTime: null
       };
       tabAudioState.set(tabId, state);
     }
 
-    // Always clear existing timeout
+    // Always clear existing timers
     if (state.timeoutId) {
       clearTimeout(state.timeoutId);
       state.timeoutId = null;
+    }
+    if (state.retryIntervalId) {
+      clearInterval(state.retryIntervalId);
+      state.retryIntervalId = null;
     }
     
     // If disabled or no selector, stop here

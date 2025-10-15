@@ -4,6 +4,7 @@ const DEFAULT_CONFIG = {
   enabled: true,
   timespan: 3000,
   buttonSelector: '',
+  retryInterval: 0,
   monitorAllTabs: true
 };
 
@@ -11,6 +12,7 @@ const DEFAULT_CONFIG = {
 const enabledCheckbox = document.getElementById('enabled');
 const timespanInput = document.getElementById('timespan');
 const buttonSelectorInput = document.getElementById('buttonSelector');
+const retryIntervalInput = document.getElementById('retryInterval');
 const saveBtn = document.getElementById('saveBtn');
 const testBtn = document.getElementById('testBtn');
 const statusDiv = document.getElementById('status');
@@ -23,6 +25,7 @@ chrome.storage.sync.get('config', (data) => {
   enabledCheckbox.checked = config.enabled;
   timespanInput.value = config.timespan / 1000; // Convert ms to seconds
   buttonSelectorInput.value = config.buttonSelector;
+  retryIntervalInput.value = (config.retryInterval || 0) / 1000; // Convert ms to seconds
   
   updateAudioStatus();
 });
@@ -33,6 +36,7 @@ saveBtn.addEventListener('click', () => {
     enabled: enabledCheckbox.checked,
     timespan: parseInt(timespanInput.value) * 1000, // Convert seconds to ms
     buttonSelector: buttonSelectorInput.value.trim(),
+    retryInterval: parseInt(retryIntervalInput.value) * 1000, // Convert seconds to ms
     monitorAllTabs: true
   };
 
@@ -183,6 +187,9 @@ async function updateAudioStatus() {
       statusHTML += '<span class="status-badge active">Active</span>';
       statusHTML += `<p>Monitoring: ${settings.timespan / 1000}s silence threshold</p>`;
       statusHTML += `<p>Target: <code>${settings.buttonSelector}</code></p>`;
+      if (settings.retryInterval > 0) {
+        statusHTML += `<p>Retry: Every ${settings.retryInterval / 1000}s if no audio</p>`;
+      }
     }
     
     if (tab.audible) {
@@ -205,3 +212,4 @@ setInterval(updateAudioStatus, 2000);
 enabledCheckbox.addEventListener('change', updateAudioStatus);
 buttonSelectorInput.addEventListener('input', updateAudioStatus);
 timespanInput.addEventListener('input', updateAudioStatus);
+retryIntervalInput.addEventListener('input', updateAudioStatus);
