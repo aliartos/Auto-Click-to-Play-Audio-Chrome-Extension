@@ -206,27 +206,36 @@ async function clickButtonInTab(tabId, buttonSelector, config = null) {
           // Scroll element into view if needed
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
           
-          // Dispatch multiple events as a real user would
-          const events = [
-            new MouseEvent('mouseover', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }),
-            new MouseEvent('mouseenter', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }),
-            new MouseEvent('mousemove', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }),
-            new PointerEvent('pointerdown', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }),
-            new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }),
-            new PointerEvent('pointerup', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }),
-            new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y }),
-            new MouseEvent('click', { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y })
-          ];
-          
-          events.forEach(event => element.dispatchEvent(event));
-          
-          // Also call native click as fallback
-          element.click();
-          
-          // Try focus if it's a focusable element
+          // Try focus first if it's a focusable element
           if (typeof element.focus === 'function') {
-            element.focus();
+            try {
+              element.focus();
+            } catch (e) {
+              // Ignore focus errors
+            }
           }
+          
+          // Use a more minimal event sequence to avoid passive listener issues
+          try {
+            // Dispatch events with passive-safe configuration
+            const eventOptions = { 
+              bubbles: true, 
+              cancelable: true, 
+              view: window, 
+              clientX: x, 
+              clientY: y,
+              composed: true
+            };
+            
+            element.dispatchEvent(new MouseEvent('mousedown', eventOptions));
+            element.dispatchEvent(new MouseEvent('mouseup', eventOptions));
+            element.dispatchEvent(new MouseEvent('click', eventOptions));
+          } catch (e) {
+            // If event dispatch fails, ignore
+          }
+          
+          // Always call native click as the most reliable method
+          element.click();
         }
         
         // Try to find and click the button
