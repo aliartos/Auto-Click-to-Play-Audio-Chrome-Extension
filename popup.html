@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audio Monitor Settings</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Audio Monitor & Auto-Clicker</h1>
+    
+    <div class="settings-section">
+      <div class="setting-item">
+        <label class="toggle-container">
+          <span class="label-text">Enable Extension</span>
+          <input type="checkbox" id="enabled" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-item">
+        <label for="timespan">Silence Duration (seconds):</label>
+        <div class="input-group">
+          <input type="number" id="timespan" min="1" max="300" step="1" value="3">
+          <span class="input-suffix">sec</span>
+        </div>
+        <small>Time to wait before clicking the button when audio stops</small>
+      </div>
+
+      <div class="setting-item">
+        <label for="buttonSelector">Button Selector:</label>
+        <input 
+          type="text" 
+          id="buttonSelector" 
+          placeholder="e.g., #playButton or .play-btn"
+          class="text-input">
+        <small>CSS selector (ID or class) of the button to click</small>
+      </div>
+
+      <div class="example-section">
+        <p><strong>Examples:</strong></p>
+        <ul>
+          <li><code>#playButton</code> - Button with ID "playButton"</li>
+          <li><code>.play-btn</code> - Button with class "play-btn"</li>
+          <li><code>button.resume</code> - Button element with class "resume"</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="button-group">
+      <button id="saveBtn" class="btn btn-primary">Save Settings</button>
+      <button id="testBtn" class="btn btn-secondary">Test Click</button>
+    </div>
+
+    <div id="status" class="status-message"></div>
+
+    <div class="info-section">
+      <h3>Status</h3>
+      <div id="audioStatus" class="audio-status">
+        <p>Loading...</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
