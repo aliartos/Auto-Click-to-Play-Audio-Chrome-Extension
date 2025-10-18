@@ -80,6 +80,14 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     chrome.storage.sync.get('config', (data) => {
       const config = data.config || DEFAULT_CONFIG;
       
+      // Skip restricted pages
+      if (tab.url && (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || 
+                      tab.url.startsWith('about:') || tab.url.startsWith('edge://') || 
+                      tab.url.startsWith('devtools://'))) {
+        console.log(`[Audio Monitor] Tab ${tabId}: Skipping restricted page: ${tab.url}`);
+        return;
+      }
+      
       // If monitoring all tabs or this is the specific tab to monitor
       if (config.monitorAllTabs || config.specificTabId === tabId) {
         handleAudioChange(tabId, changeInfo.audible, tab);
@@ -180,6 +188,21 @@ async function clickButtonInTab(tabId, buttonSelector, config = null) {
     if (!tab) {
       console.log(`[Audio Monitor] Tab ${tabId} no longer exists`);
       tabAudioState.delete(tabId);
+      return;
+    }
+    
+    // Check if tab URL is accessible (not a restricted page)
+    if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || 
+        tab.url.startsWith('about:') || tab.url.startsWith('edge://') || tab.url.startsWith('devtools://')) {
+      console.log(`[Audio Monitor] Tab ${tabId}: Skipping restricted page: ${tab.url || 'unknown'}`);
+      return;
+    }
+    
+    // Check if page is fully loaded
+    if (tab.status !== 'complete') {
+      console.log(`[Audio Monitor] Tab ${tabId}: Page not fully loaded yet, waiting...`);
+      // Wait for page to load and try again
+      setTimeout(() => clickButtonInTab(tabId, buttonSelector, config), 1000);
       return;
     }
     
@@ -357,7 +380,15 @@ async function clickButtonInTab(tabId, buttonSelector, config = null) {
       }
     }
   } catch (error) {
-    console.error(`[Audio Monitor] Error clicking button in tab ${tabId}:`, error);
+    // Handle specific error cases
+    if (error.message && error.message.includes('Cannot access contents')) {
+      console.log(`[Audio Monitor] Tab ${tabId}: Cannot access page (restricted or not loaded). Skipping.`);
+    } else if (error.message && error.message.includes('No tab with id')) {
+      console.log(`[Audio Monitor] Tab ${tabId}: Tab no longer exists`);
+      tabAudioState.delete(tabId);
+    } else {
+      console.error(`[Audio Monitor] Error clicking button in tab ${tabId}:`, error);
+    }
   }
 }
 

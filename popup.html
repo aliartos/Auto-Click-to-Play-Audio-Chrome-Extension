@@ -43,13 +43,6 @@
           ></textarea>
         </div>
 
-        <div class="setting-group">
-          <label for="retryInterval" class="setting-label"
-            >Retry Interval (seconds, 0 to disable):</label
-          >
-          <input type="number" id="retryInterval" min="0" max="300" value="0" />
-        </div>
-
         <div class="example-section">
           <p><strong>Examples:</strong></p>
           <ul>
@@ -86,6 +79,17 @@
           <p class="help-text">
             Adds random variation of ±(value/2)ms to Silence Duration. Example:
             1000ms adds ±500ms variation, making timing more human-like.
+          </p>
+        </div>
+
+        <div class="setting-group">
+          <label for="retryInterval" class="setting-label"
+            >Retry Interval (seconds, 0 to disable):</label
+          >
+          <input type="number" id="retryInterval" min="0" max="300" value="0" />
+          <p class="help-text">
+            If audio does not resume, the extension will retry clicking the
+            button at this interval (in seconds). Set to 0 to disable retries.
           </p>
         </div>
 
