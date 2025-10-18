@@ -14,6 +14,7 @@ const enabledCheckbox = document.getElementById('enabled');
 const timespanInput = document.getElementById('timespan');
 const buttonSelectorInput = document.getElementById('buttonSelector');
 const retryIntervalInput = document.getElementById('retryInterval');
+const randomizationInput = document.getElementById('randomization');
 const monitorAllTabsCheckbox = document.getElementById('monitorAllTabs');
 const specificTabGroup = document.getElementById('specificTabGroup');
 const specificTabSelect = document.getElementById('specificTabId');
@@ -40,6 +41,48 @@ tabButtons.forEach(button => {
     document.getElementById(`${tabName}-tab`).classList.add('active');
   });
 });
+
+// Validate randomization against silence duration
+function validateRandomization() {
+  const timespanSeconds = parseInt(timespanInput.value) || 3;
+  const timespanMs = timespanSeconds * 1000;
+  const randomizationMs = parseInt(randomizationInput.value) || 0;
+  
+  // Remove any existing warning
+  const existingWarning = document.getElementById('randomizationWarning');
+  if (existingWarning) {
+    existingWarning.remove();
+  }
+  
+  if (randomizationMs > timespanMs) {
+    // Show warning and update max value
+    randomizationInput.max = timespanMs;
+    randomizationInput.value = timespanMs;
+    
+    const warningDiv = document.createElement('div');
+    warningDiv.id = 'randomizationWarning';
+    warningDiv.className = 'validation-warning';
+    warningDiv.innerHTML = `
+      <span>⚠️ Randomization cannot exceed Silence Duration (${timespanMs}ms). Value adjusted automatically.</span>
+    `;
+    
+    randomizationInput.parentNode.insertBefore(warningDiv, randomizationInput.nextSibling);
+    
+    // Auto-remove warning after 5 seconds
+    setTimeout(() => {
+      if (warningDiv.parentNode) {
+        warningDiv.remove();
+      }
+    }, 5000);
+  } else {
+    // Update max value to current timespan
+    randomizationInput.max = timespanMs;
+  }
+}
+
+// Add validation listeners
+timespanInput.addEventListener('change', validateRandomization);
+randomizationInput.addEventListener('input', validateRandomization);
 
 // Function to load tabs list
 async function loadTabsList() {
@@ -81,6 +124,9 @@ chrome.storage.sync.get('config', (data) => {
   document.getElementById('retryInterval').value = config.retryInterval / 1000; // Convert ms to seconds
   document.getElementById('randomization').value = config.randomization || 0;
   document.getElementById('monitorAllTabs').checked = config.monitorAllTabs !== false;
+  
+  // Set max randomization based on timespan
+  randomizationInput.max = config.timespan || 3000;
   
   // Show/hide specific tab selection based on monitorAllTabs
   if (!config.monitorAllTabs) {

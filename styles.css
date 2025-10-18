@@ -519,3 +519,18 @@ textarea:focus {
   font-size: 11px;
   margin-left: 4px;
 }
+
+/* Validation warning */
+.validation-warning {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  padding: 10px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #856404;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: slideIn 0.3s ease-out;
+}
