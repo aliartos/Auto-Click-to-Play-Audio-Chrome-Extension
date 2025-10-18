@@ -6,7 +6,8 @@ const DEFAULT_CONFIG = {
   buttonSelector: '', // CSS selector for the button (class or id)
   retryInterval: 10000, // Retry interval in milliseconds (0 = disabled)
   randomization: 0, // Timing randomization in milliseconds (0 = disabled)
-  monitorAllTabs: true
+  monitorAllTabs: true,
+  specificTabId: null // Specific tab ID to monitor (when monitorAllTabs is false)
 };
 
 // Store audio state for each tab
@@ -75,7 +76,17 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 // Monitor tab audio state changes
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.audible !== undefined) {
-    handleAudioChange(tabId, changeInfo.audible, tab);
+    // Check if we should monitor this tab
+    chrome.storage.sync.get('config', (data) => {
+      const config = data.config || DEFAULT_CONFIG;
+      
+      // If monitoring all tabs or this is the specific tab to monitor
+      if (config.monitorAllTabs || config.specificTabId === tabId) {
+        handleAudioChange(tabId, changeInfo.audible, tab);
+      } else {
+        console.log(`[Audio Monitor] Tab ${tabId}: Skipping - not the monitored tab (monitoring tab ${config.specificTabId})`);
+      }
+    });
   }
 });
 

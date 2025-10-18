@@ -6,12 +6,12 @@ A Chrome extension that monitors audio playback on web pages and automatically c
 
 - 🔊 **Audio Monitoring**: Automatically detects when audio starts and stops playing on any tab
 - ⏱️ **Configurable Timeout**: Set custom silence duration (default: 3 seconds) before triggering the button click
-- � **Timing Randomization**: Add random variation to silence duration for more human-like behavior
-- �🎯 **Flexible Button Selection**: Target any button using CSS selectors (ID, class, or element selector)
+- 🎲 **Timing Randomization**: Add random variation to silence duration for more human-like behavior
+-  **Flexible Button Selection**: Target any button using CSS selectors (ID, class, or element selector)
 - 🔁 **Retry Mechanism**: Optionally retry clicking the button at regular intervals if audio doesn't resume
 - 🧪 **Test Mode**: Test your button selector before saving to ensure it works correctly
 - 📊 **Real-time Status**: View current audio status and extension configuration
-- 🌐 **All Tabs Support**: Works across all open tabs simultaneously
+- 🌐 **Tab Monitoring Options**: Monitor all tabs simultaneously or select a specific tab to monitor
 
 ## Installation
 
@@ -36,6 +36,10 @@ A Chrome extension that monitors audio playback on web pages and automatically c
    - **Timing Randomization**: Add random variation (in milliseconds) to make timing more human-like
      - Example: Setting 1000ms adds ±500ms variation to the silence duration
      - This prevents predictable timing patterns
+   - **Monitor All Tabs**: Toggle to monitor all tabs or select a specific tab
+     - When enabled (default): Monitors audio across all open tabs
+     - When disabled: Select a specific tab from the dropdown to monitor only that tab
+     - Use "Refresh Tabs" button to update the tab list
 
 4. Click "Save Settings" to save your configuration
 5. Use "Test Click" to verify your button selector works on the current page

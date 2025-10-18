@@ -1,79 +1,125 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <title>Audio Monitor Settings</title>
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  <div class="container">
-    <h1>🔊 Audio Monitor</h1>
-    
-    <div class="tabs">
-      <button class="tab-button active" data-tab="basic">Basic</button>
-      <button class="tab-button" data-tab="advanced">Advanced</button>
-    </div>
+  <head>
+    <meta charset="utf-8" />
+    <title>Audio Monitor Settings</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔊 Audio Monitor</h1>
 
-    <div class="tab-content active" id="basic-tab">
-      <div class="setting-group">
-        <label class="toggle-label">
-          <span class="setting-label">Enable Extension</span>
-          <div class="toggle-container">
-            <input type="checkbox" id="enabled" class="toggle-input">
-            <span class="toggle-slider"></span>
+      <div class="tabs">
+        <button class="tab-button active" data-tab="basic">Basic</button>
+        <button class="tab-button" data-tab="advanced">Advanced</button>
+      </div>
+
+      <div class="tab-content active" id="basic-tab">
+        <div class="setting-group">
+          <label class="toggle-label">
+            <span class="setting-label">Enable Extension</span>
+            <div class="toggle-container">
+              <input type="checkbox" id="enabled" class="toggle-input" />
+              <span class="toggle-slider"></span>
+            </div>
+          </label>
+        </div>
+
+        <div class="setting-group">
+          <label for="timespan" class="setting-label"
+            >Silence Duration (seconds):</label
+          >
+          <input type="number" id="timespan" min="1" max="60" value="3" />
+        </div>
+
+        <div class="setting-group">
+          <label for="buttonSelector" class="setting-label"
+            >Button Selector (CSS):</label
+          >
+          <textarea
+            type="text"
+            id="buttonSelector"
+            placeholder="e.g., #playButton or .play-btn"
+          ></textarea>
+        </div>
+
+        <div class="setting-group">
+          <label for="retryInterval" class="setting-label"
+            >Retry Interval (seconds, 0 to disable):</label
+          >
+          <input type="number" id="retryInterval" min="0" max="300" value="0" />
+        </div>
+
+        <div class="example-section">
+          <p><strong>Examples:</strong></p>
+          <ul>
+            <li><code>#playButton</code> - Button with ID "playButton"</li>
+            <li><code>.play-btn</code> - Button with class "play-btn"</li>
+            <li>
+              <code>button.resume</code> - Button element with class "resume"
+            </li>
+          </ul>
+
+          <div id="status" class="status-message"></div>
+
+          <div class="info-section">
+            <h3>Status</h3>
+            <div id="audioStatus" class="audio-status">
+              <p>Loading...</p>
+            </div>
           </div>
-        </label>
+        </div>
       </div>
 
-      <div class="setting-group">
-        <label for="timespan" class="setting-label">Silence Duration (seconds):</label>
-        <input type="number" id="timespan" min="1" max="60" value="3">
+      <div class="tab-content" id="advanced-tab">
+        <div class="setting-group">
+          <label for="randomization" class="setting-label"
+            >Timing Randomization (milliseconds):</label
+          >
+          <input
+            type="number"
+            id="randomization"
+            min="0"
+            max="5000"
+            value="0"
+          />
+          <p class="help-text">
+            Adds random variation of ±(value/2)ms to Silence Duration. Example:
+            1000ms adds ±500ms variation, making timing more human-like.
+          </p>
+        </div>
+
+        <div class="setting-group">
+          <label class="toggle-label">
+            <span class="setting-label">Monitor All Tabs</span>
+            <div class="toggle-container">
+              <input type="checkbox" id="monitorAllTabs" class="toggle-input" checked />
+              <span class="toggle-slider"></span>
+            </div>
+          </label>
+          <p class="help-text">
+            When enabled, monitors audio across all open tabs. When disabled, only monitors the selected tab.
+          </p>
+        </div>
+
+        <div class="setting-group" id="specificTabGroup">
+          <label for="specificTabId" class="setting-label">Select Tab to Monitor:</label>
+          <select id="specificTabId" class="tab-select">
+            <option value="">-- Select a tab --</option>
+          </select>
+          <button id="refreshTabs" class="btn btn-secondary btn-small">🔄 Refresh Tabs</button>
+          <p class="help-text">
+            Select which tab to monitor for audio. The extension will only work on this specific tab.
+          </p>
+        </div>
       </div>
 
-      <div class="setting-group">
-        <label for="buttonSelector" class="setting-label">Button Selector (CSS):</label>
-        <input type="text" id="buttonSelector" placeholder="e.g., #playButton or .play-btn">
-      </div>
-
-      <div class="setting-group">
-        <label for="retryInterval" class="setting-label">Retry Interval (seconds, 0 to disable):</label>
-        <input type="number" id="retryInterval" min="0" max="300" value="0">
+      <div class="button-group">
+        <button id="save" class="btn btn-primary">Save Settings</button>
+        <button id="test" class="btn btn-secondary">Test Click</button>
       </div>
     </div>
 
-    <div class="tab-content" id="advanced-tab">
-      <div class="setting-group">
-        <label for="randomization" class="setting-label">Timing Randomization (milliseconds):</label>
-        <input type="number" id="randomization" min="0" max="5000" value="0">
-        <p class="help-text">Adds random variation of ±(value/2)ms to Silence Duration. Example: 1000ms adds ±500ms variation, making timing more human-like.</p>
-      </div>
-    </div>
-
-      <div class="example-section">
-        <p><strong>Examples:</strong></p>
-        <ul>
-          <li><code>#playButton</code> - Button with ID "playButton"</li>
-          <li><code>.play-btn</code> - Button with class "play-btn"</li>
-          <li><code>button.resume</code> - Button element with class "resume"</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="button-group">
-      <button id="saveBtn" class="btn btn-primary">Save Settings</button>
-      <button id="testBtn" class="btn btn-secondary">Test Click</button>
-    </div>
-
-    <div id="status" class="status-message"></div>
-
-    <div class="info-section">
-      <h3>Status</h3>
-      <div id="audioStatus" class="audio-status">
-        <p>Loading...</p>
-      </div>
-    </div>
-  </div>
-
-  <script src="popup.js"></script>
-</body>
+    <script src="popup.js"></script>
+  </body>
 </html>

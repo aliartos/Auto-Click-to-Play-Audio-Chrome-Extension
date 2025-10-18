@@ -14,8 +14,12 @@ const enabledCheckbox = document.getElementById('enabled');
 const timespanInput = document.getElementById('timespan');
 const buttonSelectorInput = document.getElementById('buttonSelector');
 const retryIntervalInput = document.getElementById('retryInterval');
-const saveBtn = document.getElementById('saveBtn');
-const testBtn = document.getElementById('testBtn');
+const monitorAllTabsCheckbox = document.getElementById('monitorAllTabs');
+const specificTabGroup = document.getElementById('specificTabGroup');
+const specificTabSelect = document.getElementById('specificTabId');
+const refreshTabsBtn = document.getElementById('refreshTabs');
+const saveBtn = document.getElementById('save');
+const testBtn = document.getElementById('test');
 const statusDiv = document.getElementById('status');
 const audioStatusDiv = document.getElementById('audioStatus');
 
@@ -37,6 +41,37 @@ tabButtons.forEach(button => {
   });
 });
 
+// Function to load tabs list
+async function loadTabsList() {
+  const tabs = await chrome.tabs.query({});
+  specificTabSelect.innerHTML = '<option value="">-- Select a tab --</option>';
+  
+  tabs.forEach(tab => {
+    const option = document.createElement('option');
+    option.value = tab.id;
+    const title = tab.title || 'Untitled';
+    const truncatedTitle = title.length > 50 ? title.substring(0, 47) + '...' : title;
+    option.textContent = `${truncatedTitle}${tab.audible ? ' 🔊' : ''}`;
+    specificTabSelect.appendChild(option);
+  });
+}
+
+// Monitor All Tabs toggle handler
+monitorAllTabsCheckbox.addEventListener('change', () => {
+  if (monitorAllTabsCheckbox.checked) {
+    specificTabGroup.classList.remove('visible');
+  } else {
+    specificTabGroup.classList.add('visible');
+    loadTabsList();
+  }
+});
+
+// Refresh tabs button
+refreshTabsBtn.addEventListener('click', () => {
+  loadTabsList();
+  showStatus('Tabs list refreshed', 'success');
+});
+
 // Load saved settings
 chrome.storage.sync.get('config', (data) => {
   const config = data.config || DEFAULT_CONFIG;
@@ -45,6 +80,17 @@ chrome.storage.sync.get('config', (data) => {
   document.getElementById('buttonSelector').value = config.buttonSelector || '';
   document.getElementById('retryInterval').value = config.retryInterval / 1000; // Convert ms to seconds
   document.getElementById('randomization').value = config.randomization || 0;
+  document.getElementById('monitorAllTabs').checked = config.monitorAllTabs !== false;
+  
+  // Show/hide specific tab selection based on monitorAllTabs
+  if (!config.monitorAllTabs) {
+    specificTabGroup.classList.add('visible');
+    loadTabsList().then(() => {
+      if (config.specificTabId) {
+        specificTabSelect.value = config.specificTabId;
+      }
+    });
+  }
 });
 
 // Enable/Disable toggle - immediate effect without saving
@@ -82,6 +128,8 @@ document.getElementById('save').addEventListener('click', () => {
     config.buttonSelector = document.getElementById('buttonSelector').value.trim();
     config.retryInterval = parseInt(document.getElementById('retryInterval').value) * 1000; // Convert to ms
     config.randomization = parseInt(document.getElementById('randomization').value) || 0;
+    config.monitorAllTabs = document.getElementById('monitorAllTabs').checked;
+    config.specificTabId = config.monitorAllTabs ? null : parseInt(document.getElementById('specificTabId').value) || null;
 
     chrome.storage.sync.set({ config }, () => {
       // Show save confirmation
@@ -104,6 +152,84 @@ function isValidSelector(selector) {
     return false;
   }
 }
+
+// Smart selector suggestion for class names
+function checkAndSuggestSelector(input) {
+  const value = input.trim();
+  
+  // Skip if empty or already has CSS selector syntax
+  if (!value || value.includes('.') || value.includes('#') || value.includes('[') || value.includes('>')) {
+    return null;
+  }
+  
+  // Check if it looks like multiple class names (space-separated words)
+  const words = value.split(/\s+/);
+  
+  // If we have 2+ words, likely copied class names
+  if (words.length >= 2) {
+    // Check if words look like class names (alphanumeric, hyphens, underscores)
+    const looksLikeClasses = words.every(word => /^[a-zA-Z0-9_-]+$/.test(word));
+    
+    if (looksLikeClasses) {
+      return '.' + words.join('.');
+    }
+  }
+  
+  // Check if single word without dot (might be a class name)
+  if (words.length === 1 && /^[a-zA-Z][a-zA-Z0-9_-]*$/.test(value)) {
+    // Could be ID or class - suggest both options
+    return {
+      class: '.' + value,
+      id: '#' + value
+    };
+  }
+  
+  return null;
+}
+
+// Add input handler for button selector with smart suggestions
+buttonSelectorInput.addEventListener('input', (e) => {
+  const value = e.target.value;
+  const suggestion = checkAndSuggestSelector(value);
+  
+  // Remove any existing suggestion
+  const existingSuggestion = document.getElementById('selectorSuggestion');
+  if (existingSuggestion) {
+    existingSuggestion.remove();
+  }
+  
+  if (suggestion) {
+    const suggestionDiv = document.createElement('div');
+    suggestionDiv.id = 'selectorSuggestion';
+    suggestionDiv.className = 'selector-suggestion';
+    
+    if (typeof suggestion === 'string') {
+      suggestionDiv.innerHTML = `
+        <span class="suggestion-text">💡 Did you mean: <code>${suggestion}</code>?</span>
+        <button class="btn-suggestion" data-value="${suggestion}">Use this</button>
+      `;
+    } else {
+      suggestionDiv.innerHTML = `
+        <span class="suggestion-text">💡 Did you mean:</span>
+        <button class="btn-suggestion" data-value="${suggestion.class}">Class: <code>${suggestion.class}</code></button>
+        <button class="btn-suggestion" data-value="${suggestion.id}">ID: <code>${suggestion.id}</code></button>
+      `;
+    }
+    
+    buttonSelectorInput.parentNode.insertBefore(suggestionDiv, buttonSelectorInput.nextSibling);
+    
+    // Add click handlers to suggestion buttons
+    suggestionDiv.querySelectorAll('.btn-suggestion').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        buttonSelectorInput.value = btn.getAttribute('data-value');
+        suggestionDiv.remove();
+        // Trigger input event to revalidate
+        buttonSelectorInput.dispatchEvent(new Event('input'));
+      });
+    });
+  }
+});
 
 // Show status message
 function showStatus(message, type = 'info') {
