@@ -5,6 +5,7 @@ const DEFAULT_CONFIG = {
   timespan: 1000, // 1 seconds in milliseconds
   buttonSelector: '', // CSS selector for the button (class or id)
   retryInterval: 10000, // Retry interval in milliseconds (0 = disabled)
+  randomization: 0, // Timing randomization in milliseconds (0 = disabled)
   monitorAllTabs: true
 };
 
@@ -135,14 +136,21 @@ function handleAudioChange(tabId, isAudible, tab) {
     } else {
       // Audio stopped
       state.isAudible = false;
-      console.log(`[Audio Monitor] Tab ${tabId}: Audio stopped, waiting ${config.timespan}ms`);
+      
+      // Apply randomization if configured
+      const randomization = config.randomization || 0;
+      const variation = randomization > 0 ? (Math.random() - 0.5) * randomization : 0;
+      const effectiveTimespan = config.timespan + variation;
+      
+      console.log(`[Audio Monitor] Tab ${tabId}: Audio stopped, waiting ${config.timespan}ms` + 
+                 (randomization > 0 ? ` (±${randomization/2}ms variation, effective: ${effectiveTimespan.toFixed(0)}ms)` : ''));
       console.log(`[Audio Monitor] Tab ${tabId}: Config - Retry Interval: ${config.retryInterval}ms`);
       
       // Set timeout to click button after configured timespan
       state.timeoutId = setTimeout(() => {
         console.log(`[Audio Monitor] Tab ${tabId}: Initial timeout fired, clicking button`);
         clickButtonInTab(tabId, config.buttonSelector, config);
-      }, config.timespan);
+      }, effectiveTimespan);
     }
   });
 }

@@ -1,51 +1,53 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8">
   <title>Audio Monitor Settings</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="container">
-    <h1>Audio Monitor & Auto-Clicker</h1>
+    <h1>🔊 Audio Monitor</h1>
     
-    <div class="settings-section">
-      <div class="setting-item">
-        <label class="toggle-container">
-          <span class="label-text">Enable Extension</span>
-          <input type="checkbox" id="enabled" checked>
-          <span class="toggle-slider"></span>
+    <div class="tabs">
+      <button class="tab-button active" data-tab="basic">Basic</button>
+      <button class="tab-button" data-tab="advanced">Advanced</button>
+    </div>
+
+    <div class="tab-content active" id="basic-tab">
+      <div class="setting-group">
+        <label class="toggle-label">
+          <span class="setting-label">Enable Extension</span>
+          <div class="toggle-container">
+            <input type="checkbox" id="enabled" class="toggle-input">
+            <span class="toggle-slider"></span>
+          </div>
         </label>
       </div>
 
-      <div class="setting-item">
-        <label for="timespan">Silence Duration (seconds):</label>
-        <div class="input-group">
-          <input type="number" id="timespan" min="1" max="300" step="1" value="1">
-          <span class="input-suffix">sec</span>
-        </div>
-        <small>Time to wait before clicking the button when audio stops</small>
+      <div class="setting-group">
+        <label for="timespan" class="setting-label">Silence Duration (seconds):</label>
+        <input type="number" id="timespan" min="1" max="60" value="3">
       </div>
 
-      <div class="setting-item">
-        <label for="buttonSelector">Button Selector:</label>
-        <input 
-          type="text" 
-          id="buttonSelector" 
-          placeholder="e.g., #playButton or .play-btn"
-          class="text-input">
-        <small>CSS selector (ID or class) of the button to click</small>
+      <div class="setting-group">
+        <label for="buttonSelector" class="setting-label">Button Selector (CSS):</label>
+        <input type="text" id="buttonSelector" placeholder="e.g., #playButton or .play-btn">
       </div>
 
-      <div class="setting-item">
-        <label for="retryInterval">Retry Interval (seconds):</label>
-        <div class="input-group">
-          <input type="number" id="retryInterval" min="0" max="300" step="1" value="10">
-          <span class="input-suffix">sec</span>
-        </div>
-        <small>If still no audio, click again after this interval (0 = disabled)</small>
+      <div class="setting-group">
+        <label for="retryInterval" class="setting-label">Retry Interval (seconds, 0 to disable):</label>
+        <input type="number" id="retryInterval" min="0" max="300" value="0">
       </div>
+    </div>
+
+    <div class="tab-content" id="advanced-tab">
+      <div class="setting-group">
+        <label for="randomization" class="setting-label">Timing Randomization (milliseconds):</label>
+        <input type="number" id="randomization" min="0" max="5000" value="0">
+        <p class="help-text">Adds random variation of ±(value/2)ms to Silence Duration. Example: 1000ms adds ±500ms variation, making timing more human-like.</p>
+      </div>
+    </div>
 
       <div class="example-section">
         <p><strong>Examples:</strong></p>

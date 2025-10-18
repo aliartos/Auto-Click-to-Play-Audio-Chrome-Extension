@@ -6,7 +6,9 @@ A Chrome extension that monitors audio playback on web pages and automatically c
 
 - 🔊 **Audio Monitoring**: Automatically detects when audio starts and stops playing on any tab
 - ⏱️ **Configurable Timeout**: Set custom silence duration (default: 3 seconds) before triggering the button click
-- 🎯 **Flexible Button Selection**: Target any button using CSS selectors (ID, class, or element selector)
+- � **Timing Randomization**: Add random variation to silence duration for more human-like behavior
+- �🎯 **Flexible Button Selection**: Target any button using CSS selectors (ID, class, or element selector)
+- 🔁 **Retry Mechanism**: Optionally retry clicking the button at regular intervals if audio doesn't resume
 - 🧪 **Test Mode**: Test your button selector before saving to ensure it works correctly
 - 📊 **Real-time Status**: View current audio status and extension configuration
 - 🌐 **All Tabs Support**: Works across all open tabs simultaneously
@@ -24,13 +26,19 @@ A Chrome extension that monitors audio playback on web pages and automatically c
 ### Using the Extension
 
 1. Click the extension icon in your Chrome toolbar to open the settings popup
-2. Configure your settings:
+2. Configure your settings in the **Basic** tab:
    - **Enable Extension**: Toggle the extension on/off
    - **Silence Duration**: Set how many seconds to wait after audio stops before clicking the button
    - **Button Selector**: Enter the CSS selector for the button you want to click
+   - **Retry Interval**: Set retry interval in seconds (0 to disable) to keep clicking if audio doesn't resume
 
-3. Click "Save Settings" to save your configuration
-4. Use "Test Click" to verify your button selector works on the current page
+3. Configure advanced settings in the **Advanced** tab:
+   - **Timing Randomization**: Add random variation (in milliseconds) to make timing more human-like
+     - Example: Setting 1000ms adds ±500ms variation to the silence duration
+     - This prevents predictable timing patterns
+
+4. Click "Save Settings" to save your configuration
+5. Use "Test Click" to verify your button selector works on the current page
 
 ## Configuration
 

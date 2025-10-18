@@ -5,6 +5,7 @@ const DEFAULT_CONFIG = {
   timespan: 3000,
   buttonSelector: '',
   retryInterval: 0,
+  randomization: 0,
   monitorAllTabs: true
 };
 
@@ -18,16 +19,32 @@ const testBtn = document.getElementById('testBtn');
 const statusDiv = document.getElementById('status');
 const audioStatusDiv = document.getElementById('audioStatus');
 
+// Tab switching functionality
+const tabButtons = document.querySelectorAll('.tab-button');
+const tabContents = document.querySelectorAll('.tab-content');
+
+tabButtons.forEach(button => {
+  button.addEventListener('click', () => {
+    const tabName = button.getAttribute('data-tab');
+    
+    // Update active button
+    tabButtons.forEach(btn => btn.classList.remove('active'));
+    button.classList.add('active');
+    
+    // Update active content
+    tabContents.forEach(content => content.classList.remove('active'));
+    document.getElementById(`${tabName}-tab`).classList.add('active');
+  });
+});
+
 // Load saved settings
 chrome.storage.sync.get('config', (data) => {
   const config = data.config || DEFAULT_CONFIG;
-  
-  enabledCheckbox.checked = config.enabled;
-  timespanInput.value = config.timespan / 1000; // Convert ms to seconds
-  buttonSelectorInput.value = config.buttonSelector;
-  retryIntervalInput.value = (config.retryInterval || 0) / 1000; // Convert ms to seconds
-  
-  updateAudioStatus();
+  document.getElementById('enabled').checked = config.enabled;
+  document.getElementById('timespan').value = config.timespan / 1000; // Convert ms to seconds
+  document.getElementById('buttonSelector').value = config.buttonSelector || '';
+  document.getElementById('retryInterval').value = config.retryInterval / 1000; // Convert ms to seconds
+  document.getElementById('randomization').value = config.randomization || 0;
 });
 
 // Enable/Disable toggle - immediate effect without saving
@@ -56,33 +73,25 @@ enabledCheckbox.addEventListener('change', async () => {
 });
 
 // Save settings
-saveBtn.addEventListener('click', () => {
-  const config = {
-    enabled: enabledCheckbox.checked,
-    timespan: parseInt(timespanInput.value) * 1000, // Convert seconds to ms
-    buttonSelector: buttonSelectorInput.value.trim(),
-    retryInterval: parseInt(retryIntervalInput.value) * 1000, // Convert seconds to ms
-    monitorAllTabs: true
-  };
+document.getElementById('save').addEventListener('click', () => {
+  chrome.storage.sync.get('config', (data) => {
+    const config = data.config || DEFAULT_CONFIG;
+    
+    config.enabled = document.getElementById('enabled').checked;
+    config.timespan = parseInt(document.getElementById('timespan').value) * 1000; // Convert to ms
+    config.buttonSelector = document.getElementById('buttonSelector').value.trim();
+    config.retryInterval = parseInt(document.getElementById('retryInterval').value) * 1000; // Convert to ms
+    config.randomization = parseInt(document.getElementById('randomization').value) || 0;
 
-  // Validate button selector
-  if (config.enabled && !config.buttonSelector) {
-    showStatus('Please enter a button selector', 'error');
-    return;
-  }
-
-  // Validate selector format
-  if (config.buttonSelector && !isValidSelector(config.buttonSelector)) {
-    showStatus('Invalid CSS selector format', 'error');
-    return;
-  }
-
-  chrome.storage.sync.set({ config }, () => {
-    const statusMsg = config.enabled ? 
-      'Settings saved! Extension is now active.' : 
-      'Settings saved! Extension is now disabled.';
-    showStatus(statusMsg, 'success');
-    updateAudioStatus();
+    chrome.storage.sync.set({ config }, () => {
+      // Show save confirmation
+      const saveBtn = document.getElementById('save');
+      const originalText = saveBtn.textContent;
+      saveBtn.textContent = '✓ Saved!';
+      setTimeout(() => {
+        saveBtn.textContent = originalText;
+      }, 2000);
+    });
   });
 });
 
