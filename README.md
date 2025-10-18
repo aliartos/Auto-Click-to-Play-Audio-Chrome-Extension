@@ -1,6 +1,6 @@
-# Audio Monitor & Auto-Clicker Chrome Extension
+# Auto Click to Play Audio - Chrome Extension
 
-A Chrome extension that monitors audio playback on web pages and automatically clicks a specified button when audio stops playing for a configurable duration.
+A Chrome extension that automatically clicks a button to resume audio playback when it detects silence for a configurable duration. Perfect for music players, video streaming, podcasts, and language learning apps.
 
 ## Features
 
@@ -15,12 +15,29 @@ A Chrome extension that monitors audio playback on web pages and automatically c
 
 ## Installation
 
+### From Source
+
+1. Clone or download this repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Build the extension:
+   ```bash
+   npm run build
+   ```
+4. Load in Chrome:
+   - Open Chrome and navigate to `chrome://extensions/`
+   - Enable "Developer mode" using the toggle in the top right corner
+   - Click "Load unpacked" button
+   - Select the `dist` folder from the built extension
+
 ### Load Unpacked Extension (Development)
 
 1. Open Chrome and navigate to `chrome://extensions/`
 2. Enable "Developer mode" using the toggle in the top right corner
 3. Click "Load unpacked" button
-4. Select the `chrome-extension` folder
+4. Select the project root folder (not dist)
 5. The extension should now appear in your extensions list
 
 ### Using the Extension

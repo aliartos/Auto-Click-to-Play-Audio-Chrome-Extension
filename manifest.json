@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Audio Monitor & Auto-Clicker",
+  "name": "Auto Click to Play Audio",
   "version": "1.0.0",
-  "description": "Monitors page audio and clicks a button when audio stops playing for a configurable duration",
+  "description": "Automatically clicks a button when audio stops playing to resume playback",
   "permissions": [
     "storage",
     "tabs",

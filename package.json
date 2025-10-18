@@ -1,0 +1,22 @@
+{
+  "name": "auto-click-audio",
+  "version": "1.0.0",
+  "description": "Chrome extension that automatically clicks a button to resume audio playback when silence is detected",
+  "scripts": {
+    "build": "node build.js",
+    "build:prod": "node build.js --production",
+    "clean": "node -e \"require('fs').rmSync('dist', {recursive: true, force: true})\"",
+    "watch": "node build.js --watch"
+  },
+  "keywords": [
+    "chrome-extension",
+    "audio",
+    "automation",
+    "auto-click"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "archiver": "^7.0.1"
+  }
+}
