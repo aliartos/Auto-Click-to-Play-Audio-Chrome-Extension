@@ -7,11 +7,71 @@ const DEFAULT_CONFIG = {
   retryInterval: 10000, // Retry interval in milliseconds (0 = disabled)
   randomization: 0, // Timing randomization in milliseconds (0 = disabled)
   monitorAllTabs: true,
-  specificTabId: null // Specific tab ID to monitor (when monitorAllTabs is false)
+  specificTabId: null, // Specific tab ID to monitor (when monitorAllTabs is false)
+  alwaysSearchAllTabs: false, // When false, auto-lock to tab after first successful click
+  lockedTabId: null // Tab that was auto-locked after successful click
 };
 
 // Store audio state for each tab
 const tabAudioState = new Map();
+
+// Auto-lock to tab after successful button click (optimization)
+async function autoLockToTab(tabId) {
+  const { config } = await chrome.storage.sync.get('config');
+  const currentConfig = config || DEFAULT_CONFIG;
+  
+  // Only auto-lock if:
+  // 1. alwaysSearchAllTabs is false (optimization enabled)
+  // 2. Currently monitoring all tabs
+  // 3. Not already locked to a specific tab
+  if (currentConfig.alwaysSearchAllTabs || !currentConfig.monitorAllTabs || currentConfig.lockedTabId) {
+    return;
+  }
+  
+  console.log(`[Auto-Lock] Locking to tab ${tabId} after successful button click`);
+  
+  // Get tab info for logging
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    console.log(`[Auto-Lock] Locked tab: ${tab.title} (${tab.url})`);
+  } catch (e) {
+    console.log(`[Auto-Lock] Could not get tab info: ${e.message}`);
+  }
+  
+  // Update config to lock to this tab
+  const updatedConfig = {
+    ...currentConfig,
+    monitorAllTabs: false,
+    specificTabId: tabId,
+    lockedTabId: tabId // Track that this was auto-locked
+  };
+  
+  await chrome.storage.sync.set({ config: updatedConfig });
+  
+  // Notify user about auto-lock
+  console.log(`[Auto-Lock] Extension now monitoring only tab ${tabId}`);
+  console.log('[Auto-Lock] You can change this in the Advanced settings tab');
+}
+
+// Reset auto-lock when locked tab is closed
+async function handleLockedTabClosed(tabId) {
+  const { config } = await chrome.storage.sync.get('config');
+  const currentConfig = config || DEFAULT_CONFIG;
+  
+  // Check if this was the auto-locked tab
+  if (currentConfig.lockedTabId === tabId) {
+    console.log(`[Auto-Lock] Locked tab ${tabId} was closed, reverting to monitor all tabs`);
+    
+    const updatedConfig = {
+      ...currentConfig,
+      monitorAllTabs: true,
+      specificTabId: null,
+      lockedTabId: null
+    };
+    
+    await chrome.storage.sync.set({ config: updatedConfig });
+  }
+}
 
 // Update extension badge based on config
 function updateBadge(config) {
@@ -102,16 +162,18 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   if (tabAudioState.has(tabId)) {
     const state = tabAudioState.get(tabId);
-    console.log(`[Audio Monitor] Tab ${tabId}: Tab closed, cleaning up timers`);
     if (state.timeoutId) {
       clearTimeout(state.timeoutId);
     }
     if (state.retryIntervalId) {
-      console.log(`[Audio Monitor] Tab ${tabId}: Clearing retry interval`);
       clearInterval(state.retryIntervalId);
     }
     tabAudioState.delete(tabId);
+    console.log(`[Audio Monitor] Tab ${tabId}: Closed, cleaned up state`);
   }
+  
+  // Check if this was an auto-locked tab and reset if needed
+  handleLockedTabClosed(tabId);
 });
 
 // Handle audio state changes
@@ -325,6 +387,9 @@ async function clickButtonInTab(tabId, buttonSelector, config = null) {
       if (successResults.length > 0) {
         const result = successResults[0].result;
         console.log(`[Audio Monitor] Tab ${tabId}: ✓ Successfully clicked button in ${result.location} with selector "${buttonSelector}"`, result.buttonInfo);
+        
+        // Auto-lock to this tab (if optimization enabled)
+        autoLockToTab(tabId);
         
         if (successResults.length > 1) {
           console.warn(`[Audio Monitor] Tab ${tabId}: Warning - Button found in ${successResults.length} frames, clicked only once`);

@@ -101,8 +101,21 @@
               <span class="toggle-slider"></span>
             </div>
           </label>
-          <p class="help-text">
+          <p class="help-text" id="monitorAllTabsHelp">
             When enabled, monitors audio across all open tabs. When disabled, only monitors the selected tab.
+          </p>
+        </div>
+
+        <div class="setting-group">
+          <label class="toggle-label">
+            <span class="setting-label">Always Search All Tabs</span>
+            <div class="toggle-container">
+              <input type="checkbox" id="alwaysSearchAllTabs" class="toggle-input" />
+              <span class="toggle-slider"></span>
+            </div>
+          </label>
+          <p class="help-text">
+            When disabled (recommended), the extension will automatically lock to the first tab where it successfully clicks the button, improving performance. When enabled, it continues searching all tabs every time.
           </p>
         </div>
 

@@ -6,7 +6,9 @@ const DEFAULT_CONFIG = {
   buttonSelector: '',
   retryInterval: 0,
   randomization: 0,
-  monitorAllTabs: true
+  monitorAllTabs: true,
+  alwaysSearchAllTabs: false,
+  lockedTabId: null
 };
 
 // DOM elements
@@ -16,6 +18,7 @@ const buttonSelectorInput = document.getElementById('buttonSelector');
 const retryIntervalInput = document.getElementById('retryInterval');
 const randomizationInput = document.getElementById('randomization');
 const monitorAllTabsCheckbox = document.getElementById('monitorAllTabs');
+const alwaysSearchAllTabsCheckbox = document.getElementById('alwaysSearchAllTabs');
 const specificTabGroup = document.getElementById('specificTabGroup');
 const specificTabSelect = document.getElementById('specificTabId');
 const refreshTabsBtn = document.getElementById('refreshTabs');
@@ -116,7 +119,7 @@ refreshTabsBtn.addEventListener('click', () => {
 });
 
 // Load saved settings
-chrome.storage.sync.get('config', (data) => {
+chrome.storage.sync.get('config', async (data) => {
   const config = data.config || DEFAULT_CONFIG;
   document.getElementById('enabled').checked = config.enabled;
   document.getElementById('timespan').value = config.timespan / 1000; // Convert ms to seconds
@@ -124,6 +127,27 @@ chrome.storage.sync.get('config', (data) => {
   document.getElementById('retryInterval').value = config.retryInterval / 1000; // Convert ms to seconds
   document.getElementById('randomization').value = config.randomization || 0;
   document.getElementById('monitorAllTabs').checked = config.monitorAllTabs !== false;
+  document.getElementById('alwaysSearchAllTabs').checked = config.alwaysSearchAllTabs || false;
+  
+  // Show auto-lock status if applicable
+  const monitorAllTabsHelp = document.getElementById('monitorAllTabsHelp');
+  if (config.lockedTabId && !config.alwaysSearchAllTabs) {
+    try {
+      const tab = await chrome.tabs.get(config.lockedTabId);
+      monitorAllTabsHelp.innerHTML = `<strong>🔒 Auto-locked to:</strong> ${tab.title || 'Selected Tab'}<br>The extension automatically switched to this tab after a successful button click. You can enable "Always Search All Tabs" below to disable this optimization.`;
+      monitorAllTabsHelp.style.color = '#2196F3';
+      monitorAllTabsHelp.style.fontWeight = '500';
+    } catch (e) {
+      // Tab no longer exists, will be reset by background script
+      monitorAllTabsHelp.innerHTML = 'When enabled, monitors audio across all open tabs. When disabled, only monitors the selected tab.';
+      monitorAllTabsHelp.style.color = '';
+      monitorAllTabsHelp.style.fontWeight = '';
+    }
+  } else {
+    monitorAllTabsHelp.innerHTML = 'When enabled, monitors audio across all open tabs. When disabled, only monitors the selected tab.';
+    monitorAllTabsHelp.style.color = '';
+    monitorAllTabsHelp.style.fontWeight = '';
+  }
   
   // Set max randomization based on timespan
   randomizationInput.max = config.timespan || 3000;
@@ -175,7 +199,13 @@ document.getElementById('save').addEventListener('click', () => {
     config.retryInterval = parseInt(document.getElementById('retryInterval').value) * 1000; // Convert to ms
     config.randomization = parseInt(document.getElementById('randomization').value) || 0;
     config.monitorAllTabs = document.getElementById('monitorAllTabs').checked;
+    config.alwaysSearchAllTabs = document.getElementById('alwaysSearchAllTabs').checked;
     config.specificTabId = config.monitorAllTabs ? null : parseInt(document.getElementById('specificTabId').value) || null;
+    
+    // Clear lockedTabId if user manually changes settings or enables alwaysSearchAllTabs
+    if (config.alwaysSearchAllTabs || config.monitorAllTabs) {
+      config.lockedTabId = null;
+    }
 
     chrome.storage.sync.set({ config }, () => {
       // Show save confirmation
