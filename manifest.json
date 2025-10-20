@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Auto Click to Play Audio",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Automatically clicks a button when audio stops playing to resume playback",
   "permissions": [
     "storage",
